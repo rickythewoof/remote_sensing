@@ -3,8 +3,11 @@ Repository made for Artificial Intelligence & Neural Network course with Prof. C
 
 ### Install required packages
 Install everything with 
-    sudo apt install awscli python3 python3-pip && aws configure 
-    pip install -r src/requirements.txt
+
+```console
+sudo apt install awscli python3 python3-pip && aws configure 
+pip install -r src/requirements.txt
+```
 
 ### Get Dataset
 _it's BIG, don't use mobile data_
