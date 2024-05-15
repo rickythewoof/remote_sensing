@@ -1,3 +1,4 @@
 # Ignore the building file
 *.tar.gz
 train
+test
