@@ -21,9 +21,9 @@ def split_dataset(input_path, test_split = 0.1, val_split = 0.1, random = True):
     test_set = files[train_files+val_files:]
 
     # Write the file paths to separate text files
-    write_to_file(train_set, 'train.txt', "data/splits")
-    write_to_file(val_set, 'val.txt', "data/splits")
-    write_to_file(test_set, 'test.txt', "data/splits")
+    write_to_file(train_set, 'train.txt', "data/train/AOI_11_Rotterdam/splits")
+    write_to_file(val_set, 'val.txt', "data/train/AOI_11_Rotterdam/splits")
+    write_to_file(test_set, 'test.txt', "data/train/AOI_11_Rotterdam/splits")
 
 def write_to_file(file_list, output_file, output_dir):
     output_path = os.path.join(output_dir, output_file)

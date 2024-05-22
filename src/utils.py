@@ -1,5 +1,6 @@
 import sys
 import torch
+import matplotlib.pyplot as plt
 
 # Don't start the training process without checking CUDA availability
 def test_cuda():
@@ -11,8 +12,10 @@ def test_cuda():
     print('Using PyTorch version:', torch.__version__, ' Device:', device)
     if device != torch.device('cuda'):
         sys.exit("CUDA not available.  Exiting.")
+    return device
 
 # Get the mean and standard deviation of the dataset for normalization transforms
+# TODO: To check
 def get_mean_std(loader):
     channels_sum, channels_squared_sum, num_batches = 0, 0, 0
 
@@ -25,3 +28,8 @@ def get_mean_std(loader):
     std = (channels_squared_sum / num_batches - mean ** 2) ** 0.5
 
     return mean, std
+
+
+def visualize_image(image, mask)
+    # TODO: Visualize the image and mask
+    return None
