@@ -6,15 +6,28 @@ import rasterio
 
 class SN6Dataset(data.Dataset):
 
-    def __init__(self):
+    def __init__(self, root_dir = None, 
+                split = "train",
+                transform = None):
+        self.__init__() 
+        self.root_dir = root_dir
+        self.split = split
+        self.transform = transform
+        self.img_dir = []
+        self.lbl_dir = []
+        
+        split_file = os.open(os.join(root_dir,f"data/splits/{split}.txt"), "r")
+        for line in split_file:
+            self.img_dir.append(line.strip())
+            # TO BE CHANGED WITH DATA FROM TUTOR
+            self.lbl_dir.append(line.strip().replace("/PS-RGBNIR/", "/geojson_buildings/").replace("PS-RGBNIR", "Buildings").replace(".tif", ".geojson"))
+        split_file.close()
 
-        # TODO: Load the dataset
-        None
 
     def __len__(self):
-        # TODO: Return the number of samples in the dataset
-        None
+        return len(self.img_dir)
 
     def __getitem__(self, idx):
-        # TODO: Get the item at the given index
-        None
+        image = rasterio.open(self.img_dir[idx]).read()
+        label = rasterio.open(self.lbl_dir[idx]).read()
+        return image, label
