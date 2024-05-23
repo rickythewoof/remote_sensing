@@ -14,7 +14,7 @@ class SN6Dataset(data.Dataset):
         self.root_dir = root_dir
         self.split = split
         self.dtype = dtype
-        mean, std = utils.get_mean_std(os.path.join(root_dir, "splits"), split, dtype) # TODO: To check
+        mean, std = 0 ,5
         self.transform = transforms.Compose([
             transforms.Normalize(mean=mean, std=std)
         ])
@@ -45,4 +45,3 @@ class SN6Dataset(data.Dataset):
 
         image, mask = self.transform(image, mask)
         return image, label
-
