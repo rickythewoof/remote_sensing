@@ -1,4 +1,6 @@
 import sys
+import numpy as np
+import random
 import torch
 import matplotlib.pyplot as plt
 
@@ -12,24 +14,25 @@ def test_cuda():
     print('Using PyTorch version:', torch.__version__, ' Device:', device)
     if device != torch.device('cuda'):
         sys.exit("CUDA not available.  Exiting.")
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(42)
+        torch.cuda.manual_seed_all(42)
     return device
 
 # Get the mean and standard deviation of the dataset for normalization transforms
 # TODO: To check
-def get_mean_std(loader):
-    channels_sum, channels_squared_sum, num_batches = 0, 0, 0
-
-    for data, _ in loader:
-        channels_sum += torch.mean(data, dim=[0, 2, 3])
-        channels_squared_sum += torch.mean(data ** 2, dim=[0, 2, 3])
-        num_batches += 1
-
-    mean = channels_sum / num_batches
-    std = (channels_squared_sum / num_batches - mean ** 2) ** 0.5
-
-    return mean, std
-
-
-def visualize_image(image, mask)
-    # TODO: Visualize the image and mask
+def get_mean_std(root_dir, split, dtype):
     return None
+
+
+def visualize_image(image, mask):
+    # TODO: Visualize the image and mask
+    plt.imshow(image)
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+    random.seed(seed)
