@@ -6,28 +6,25 @@ import dataset as dataset
 import torch.nn as nn
 import tqdm.notebook as tqdm
 
-from rasterio.plot import show
+if __name__ == "__main__":
+    device = utils.set_cuda_and_seed()
 
-device = utils.set_and_test_cuda()
+    # Load the dataset
 
-# Load the dataset
+    train_dataset = dataset.SN6Dataset(root_dir='data/train/AOI_11_Rotterdam', split="train", dtype="PS-RGB")
+    eval_dataset = dataset.SN6Dataset(root_dir='data/train/AOI_11_Rotterdam', split="val", dtype="PS-RGB")
 
-train_dataset = dataset.SN6Dataset(root_dir='data/train/AOI_11_Rotterdam', split="train", dtype="PS-RGBNIR")
-eval_dataset = dataset.SN6Dataset(root_dir='data/train/AOI_11_Rotterdam', split="val", dtype="PS-RGBNIR")
-
-# Load the data loaders 
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=16, shuffle=True)
-eval_loader = torch.utils.data.DataLoader(eval_dataset, batch_size=16, shuffle=False)
-
-
-# TODO: Choose the model, loss and the optimizer
-model = UNET(in_channels = 3, out_channels = 1).to(device)
-
-criterion = nn.BCEWithLogitsLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=optimizer.param_groups[0]['lr']*0.9)
+    # Load the data loaders 
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=16, shuffle=True)
+    eval_loader = torch.utils.data.DataLoader(eval_dataset, batch_size=16, shuffle=False)
 
 
+    # TODO: Choose the model, loss and the optimizer
+    model = UNET(in_channels = 3, out_channels = 1).to(device)
+
+    criterion = nn.BCEWithLogitsLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=optimizer.param_groups[0]['lr']*0.9)
 
 def train (train_loader, eval_loader, model, optimizer, criterion, num_epochs = 10):
     for epoch in range(num_epochs):
@@ -36,6 +33,8 @@ def train (train_loader, eval_loader, model, optimizer, criterion, num_epochs = 
         accuracy = evaluate(eval_loader, model)
         utils.save_model(model, optimizer, epoch, loss, accuracy)
         scheduler.step()
+        if (False): # Early stopping condition!
+            utils.save_model(model, optimizer, epoch, loss, accuracy)
 
 def train_1_epoch(data_loader, model, optimizer, criterion):
     model.train()

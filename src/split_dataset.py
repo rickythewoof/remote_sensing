@@ -31,6 +31,7 @@ def write_to_file(file_list, output_file, output_dir):
         for file in file_list:
             f.write(file + '\n')
 
-# Create the actual splits
-input_path = 'data/train/AOI_11_Rotterdam/PS-RGBNIR'
-split_dataset(input_path, test_split=0.1, val_split=0.1, random=False)
+if __name__ == "__main__":
+    # Create the actual splits
+    input_path = 'data/train/AOI_11_Rotterdam/PS-RGB'
+    split_dataset(input_path, test_split=0.1, val_split=0.1, random=False)

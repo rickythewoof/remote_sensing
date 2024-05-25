@@ -3,9 +3,10 @@ import numpy as np
 import random
 import torch
 import matplotlib.pyplot as plt
+from dataset import SN6Dataset
 
 # Don't start the training process without checking CUDA availability
-def set_and_test_cuda():
+def set_cuda_and_seed():
     if torch.cuda.is_available():
         device = torch.device('cuda')
     else:
@@ -19,13 +20,17 @@ def set_and_test_cuda():
 
 # Get the mean and standard deviation of the dataset for normalization transforms
 # TODO: To check
-def get_mean_std(root_dir, split, dtype):
+def get_mean_std(root_dir, split):
+    pass
     return None
 
 
 def visualize_image(image, mask):
     # TODO: Visualize the image and mask
     plt.imshow(image)
+    plt.title("Image")
+    plt.axis("off")
+    plt.show()
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -55,3 +60,8 @@ def load_model(name, model, optimizer):
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
     return model, optimizer, epoch, loss
+
+if __name__ == "__main__":
+    dataset = SN6Dataset(root_dir='data/train/AOI_11_Rotterdam', split="train", dtype="PS-RGB")
+    image, mask = dataset[0]
+    visualize_image(image)

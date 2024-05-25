@@ -4,19 +4,24 @@ import utils
 import torch.utils.data as data
 from torchvision import transforms
 import rasterio
+import albumentations as A
 
 class SN6Dataset(data.Dataset):
 
     def __init__(self,
                 root_dir = None, 
                 split = "train",
-                dtype = "PS-RGBNIR"):
+                mean = None,
+                std = None,
+                dtype = "PS-RGB"):
+        assert(split in ["train", "val", "test"] and "error with split")
         self.root_dir = root_dir
         self.split = split
         self.dtype = dtype
         mean, std = 0 ,5
         self.transform = transforms.Compose([
-            transforms.Normalize(mean=mean, std=std)
+            transforms.Normalize(mean=mean, std=std), 
+            transforms.ToTensor()
         ])
         self.img_dir = []
         self.lbl_dir = []
@@ -40,8 +45,9 @@ class SN6Dataset(data.Dataset):
         mask = print("something something")
 
         if(self.split == "train"):      # Compute data augmentation only for the training set
-            self.transform.transforms.append(transforms.RandomHorizontalFlip(p=0.5))
-            self.transform.transforms.append(transforms.RandomVerticalFlip(p=0.5))
+            self.transform.transforms.append(A.RandomHorizontalFlip(p=0.5))
+            self.transform.transforms.append(A.RandomVerticalFlip(p=0.5))
+            self.transform.transforms.append(A.RandomRotate90(p=0.5))
 
         image, mask = self.transform(image, mask)
         return image, label
