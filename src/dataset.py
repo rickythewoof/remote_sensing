@@ -29,7 +29,7 @@ class SN6Dataset(data.Dataset):
         split_file = open(os.path.join(root_dir,f"splits/{split}.txt"), "r")
         for line in split_file:
             self.img_dir.append(line.strip())
-            self.lbl_dir.append(line.strip())   # TO BE CHANGED WITH DATA FROM TUTOR
+            self.lbl_dir.append(line.strip().replace(f"/{dtype}/", "/geojson_buildings/").replace("PS-RGBNIR","buildings").replace(".tif", ".geojson"))
         split_file.close()
 
 

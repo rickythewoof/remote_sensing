@@ -3,7 +3,8 @@ import numpy as np
 import random
 import torch
 import matplotlib.pyplot as plt
-from dataset import SN6Dataset
+import rasterio
+import fiona
 
 # Don't start the training process without checking CUDA availability
 def set_cuda_and_seed():
@@ -40,6 +41,12 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
+def label2mask(image, label):
+    with fiona.open(label, "r") as shapefile:
+        shapes = [feature["geometry"] for feature in shapefile]
+    with rasterio.open(image) as src:
+        out_image, out_transform = rasterio.mask.mask(src, shapes, crop=True)
+    return out_image, out_transform
 
 def save_model(model, optimizer, epoch, loss, f1_score):
     checkpoint = {
