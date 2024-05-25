@@ -20,8 +20,8 @@ class SN6Dataset(data.Dataset):
         self.dtype = dtype
         mean, std = 0 ,5
         self.transform = transforms.Compose([
-            transforms.Normalize(mean=mean, std=std), 
-            transforms.ToTensor()
+            transforms.Normalize(mean=mean, std=std),
+            transforms
         ])
         self.img_dir = []
         self.lbl_dir = []
@@ -29,7 +29,7 @@ class SN6Dataset(data.Dataset):
         split_file = open(os.path.join(root_dir,f"splits/{split}.txt"), "r")
         for line in split_file:
             self.img_dir.append(line.strip())
-            self.lbl_dir.append(line.strip().replace(f"/{dtype}/", "/geojson_buildings/").replace("PS-RGBNIR","buildings").replace(".tif", ".geojson"))
+            self.lbl_dir.append(line.strip().replace(f"/{dtype}/", "/geojson_buildings/").replace(f"{dtype}","Buildings").replace(".tif", ".geojson"))
         split_file.close()
 
 
@@ -37,17 +37,13 @@ class SN6Dataset(data.Dataset):
         return len(self.img_dir)
 
     def __getitem__(self, idx):
-        image = rasterio.open(self.img_dir[idx]).read().astype(np.float32)
+        image = rasterio.open(self.img_dir[idx]).read().astype(np.float32).transpose(1,2,0)
         
-        label = rasterio.open(self.lbl_dir[idx]).read(1) # TO BE CHANGED WITH DATA FROM TUTOR
+        mask = utils.create_segmentation_mask(image, self.lbl_dir[idx]) # If failing wait for the professor's mask creation function
+
+        if self.transform:
+            image = self.transform(image)
+            mask = self.transform(mask)
+
         
-        # TODO: Do something with the label
-        mask = print("something something")
-
-        if(self.split == "train"):      # Compute data augmentation only for the training set
-            self.transform.transforms.append(A.RandomHorizontalFlip(p=0.5))
-            self.transform.transforms.append(A.RandomVerticalFlip(p=0.5))
-            self.transform.transforms.append(A.RandomRotate90(p=0.5))
-
-        image, mask = self.transform(image, mask)
-        return image, label
+        return image, mask

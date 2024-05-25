@@ -4,7 +4,11 @@ import random
 import torch
 import matplotlib.pyplot as plt
 import rasterio
-import fiona
+import rasterio.features
+import json
+from shapely.geometry import shape
+import tqdm
+
 
 # Don't start the training process without checking CUDA availability
 def set_cuda_and_seed():
@@ -18,20 +22,75 @@ def set_cuda_and_seed():
         sys.exit("CUDA not available.  Exiting.")
     set_seed(42) # Set the seed to 42, which is the answer to everything
     return device
+def create_segmentation_mask(image, geojson_path):
+    with open(geojson_path) as f:
+        geojson_data = json.load(f)
+    mask = np.zeros_like(image[:, :, 0])
+
+    # Iterate over the features in the geojson file
+    for feature in geojson_data['features']:
+        # Convert the feature geometry to a shapely object
+        geometry = shape(feature['geometry'])
+        if geometry.geom_type == 'Polygon':    
+            mask = rasterio.features.geometry_mask([geometry], out_shape=mask.shape, transform=rasterio.Affine(1, 0, 0, 0, -1, 0), invert=True)
+    return mask
 
 # Get the mean and standard deviation of the dataset for normalization transforms
-# TODO: To check
-def get_mean_std(root_dir, split):
-    pass
-    return None
+def get_mean_std(path_to_train_data):
+    mean = np.zeros(3)
+    std = np.zeros(3)
+    samples = 0
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Using device:', device)
+    
+    with open(path_to_train_data) as f:
+        image_paths = f.read().splitlines()
+    
+    progress_bar = tqdm.tqdm(total=len(image_paths), desc='Calculating mean and std')
+    
+    for image_path in image_paths:
+        with rasterio.open(image_path) as dataset:
+            image = dataset.read()
+            image = torch.from_numpy(image).to(device)
+            
+            for i in range(3):
+                mean[i] += torch.mean(image[i].float()).item()
+                std[i] += torch.std(image[i].float()).item()
+        
+        samples += 1
+        progress_bar.update(1)
+    
+    progress_bar.close()
+    
+    mean /= samples
+    std /= samples
 
+    return mean, std
 
 def visualize_image(image, mask):
+    # Convert image and mask to numpy arrays
+
+    # Transpose the dimensions of image and mask
+
     # TODO: Visualize the image and mask
+    image = np.array(image)
+    mask = np.array(mask)
+    plt.figure(figsize=(10, 10))
+    plt.subplot(1, 2, 1)
     plt.imshow(image)
+    plt.axis('off')
     plt.title("Image")
-    plt.axis("off")
+    plt.subplot(1, 2, 2)
+    plt.imshow(mask, cmap='gray')
+    plt.axis('off')
+    plt.title("Mask")
     plt.show()
+
+def normalize_image(image):
+    # Normalize the image
+    image = image / 255.0
+    return image
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -41,12 +100,7 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-def label2mask(image, label):
-    with fiona.open(label, "r") as shapefile:
-        shapes = [feature["geometry"] for feature in shapefile]
-    with rasterio.open(image) as src:
-        out_image, out_transform = rasterio.mask.mask(src, shapes, crop=True)
-    return out_image, out_transform
+
 
 def save_model(model, optimizer, epoch, loss, f1_score):
     checkpoint = {
@@ -69,6 +123,7 @@ def load_model(name, model, optimizer):
     return model, optimizer, epoch, loss
 
 if __name__ == "__main__":
-    dataset = SN6Dataset(root_dir='data/train/AOI_11_Rotterdam', split="train", dtype="PS-RGB")
-    image, mask = dataset[0]
-    visualize_image(image)
+    print("Calculating the mean and standard deviation of the dataset")
+    mean, std = get_mean_std("data/train/AOI_11_Rotterdam/splits/train.txt")
+    print("Mean:", mean)
+    print("Standard Deviation:", std)
