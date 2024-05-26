@@ -26,55 +26,28 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=optimizer.param_groups[0]['lr']*0.9)
 
-def train (train_loader, eval_loader, model, optimizer, criterion, scheduler, device, num_epochs = 10):
-    for _ in range(num_epochs):
-        train_loss = train_1_epoch(train_loader, model, optimizer, criterion, device)
-        print(f"Training Loss: {train_loss}")
-        eval_accuracy = evaluate(eval_loader, model, device)
-        print(f"Evaluation Accuracy: {eval_accuracy}")
-        scheduler.step()
         
-def train_1_epoch(data_loader, model, optimizer, criterion, device):
+def train(train_loader, model, optimizer, criterion, scaler, device):
     model.train()
     total_loss = 0
     count_batches = 0
 
-    bar = tqdm.tqdm(data_loader)
+    bar = tqdm.tqdm(train_loader)
     for data, mask in bar:
         # Move the data to the device
         data, mask = data.to(device), mask.to(device).squeeze(dim=1)
+        # Scale the data
         # Zero the gradients
         optimizer.zero_grad()
         # Forward pass
-        output = model(data)
-        output = output.squeeze(dim=1)
-        # Calculate the loss
-        loss = criterion(output, mask)
+        with torch.cuda.amp.autocast():
+            output = model(data)
+            output = output.squeeze(dim=1)
+            # Calculate the loss
+            loss = criterion(output, mask)
         # Backward pass
-        loss.backward()
+        scaler.scale(loss).backward()
         # Update the weights
-        optimizer.step()
-        total_loss += loss.item()
-        count_batches += 1
+        scaler.step(optimizer)
+        scaler.update()
         bar.set_description(f"Loss: {loss.item():.4f}")
-
-    return total_loss / count_batches  # Returning the average loss for the epoch
-
-def evaluate(data_loader, model, device):
-    model.eval()
-    num_preds = 0
-    true_preds = 0
-    with torch.no_grad():
-        for data, label in data_loader:
-            data, label = data.to(device), label.to(device)
-            pred = model(data)
-            pred = pred.squeeze(dim = 1)
-            pred = torch.sigmoid(pred)
-            pred_lbl = (pred >= 0.5).long()
-
-            true_preds += torch.sum(pred_lbl == label)
-            num_preds += label.shape[0]
-    
-    accuracy = true_preds/num_preds
-    print(f"Accuracy: {100*accuracy:.2f}%")
-    return accuracy

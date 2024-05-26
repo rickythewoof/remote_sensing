@@ -63,8 +63,8 @@ def visualize_image(image, mask):
     # Transpose the dimensions of image and mask
 
     # TODO: Visualize the image and mask
-    image = np.array(image)
-    mask = np.array(mask)
+    image = np.array(image).transpose(1,2,0)
+    mask = np.array(mask).transpose(1,2,0)
     plt.figure(figsize=(10, 10))
     plt.subplot(1, 2, 1)
     plt.imshow(image)
@@ -89,20 +89,31 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-def get_accuracy(output, target):
+def get_accuracy(data_loader, model, device):
     # Get the accuracy of the model
-    output = torch.sigmoid(output)
-    output = (output > 0.5).float()
-    correct = (output == target).float()
-    accuracy = correct.sum() / correct.numel()
-    return accuracy
+    true_preds = 0
+    num_preds = 0
+    dice_score = 0
+    model.eval()
+
+    with torch.no_grad():
+        for data, mask in data_loader:
+            data, mask = data.to(device), mask.to(device).squeeze(dim=1)
+            output = model(data)
+            output = torch.sigmoid(output)
+            output = (output > 0.5).float()
+            true_preds += (output == mask).sum()
+            num_preds += output.numel()
+            dice_score += (2*(output*mask).sum()) / ((output + mask).sum() + 1e-8)
+    print(f"Accuracy: {true_preds/num_preds:.4f}")
+    print(f"Dice Score: {dice_score/len(data_loader):.4f}")
 
 def save_predictions_as_image(prediction, output_path):
     # Save the predictions as an image
     pass
 
 
-def save_checkpoint(model, optimizer, epoch, loss, f1_score):
+def save_checkpoint(state, filename="model_checkpoint.pth"):
     checkpoint = {
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
@@ -110,6 +121,7 @@ def save_checkpoint(model, optimizer, epoch, loss, f1_score):
         'loss': loss,
         'f1_score': f1_score
     }
+    print("saving checkpoint")
     torch.save(checkpoint, f"model_checkpoint_{epoch}.pt")
 
 def load_checkpoint(name, model, optimizer):
