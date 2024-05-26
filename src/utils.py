@@ -4,7 +4,7 @@ import random
 import torch
 import matplotlib.pyplot as plt
 import rasterio
-import rasterio.features
+from rasterio.mask import mask
 import json
 from shapely.geometry import shape
 import tqdm
@@ -22,18 +22,7 @@ def set_cuda_and_seed():
         sys.exit("CUDA not available.  Exiting.")
     set_seed(42) # Set the seed to 42, which is the answer to everything
     return device
-def create_segmentation_mask(image, geojson_path):
-    with open(geojson_path) as f:
-        geojson_data = json.load(f)
-    mask = np.zeros_like(image[:, :, 0])
 
-    # Iterate over the features in the geojson file
-    for feature in geojson_data['features']:
-        # Convert the feature geometry to a shapely object
-        geometry = shape(feature['geometry'])
-        if geometry.geom_type == 'Polygon':    
-            mask = rasterio.features.geometry_mask([geometry], out_shape=mask.shape, transform=rasterio.Affine(1, 0, 0, 0, -1, 0), invert=True)
-    return mask
 
 # Get the mean and standard deviation of the dataset for normalization transforms
 def get_mean_std(path_to_train_data):
@@ -100,9 +89,20 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
+def get_accuracy(output, target):
+    # Get the accuracy of the model
+    output = torch.sigmoid(output)
+    output = (output > 0.5).float()
+    correct = (output == target).float()
+    accuracy = correct.sum() / correct.numel()
+    return accuracy
+
+def save_predictions_as_image(prediction, output_path):
+    # Save the predictions as an image
+    pass
 
 
-def save_model(model, optimizer, epoch, loss, f1_score):
+def save_checkpoint(model, optimizer, epoch, loss, f1_score):
     checkpoint = {
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
@@ -112,7 +112,7 @@ def save_model(model, optimizer, epoch, loss, f1_score):
     }
     torch.save(checkpoint, f"model_checkpoint_{epoch}.pt")
 
-def load_model(name, model, optimizer):
+def load_checkpoint(name, model, optimizer):
     model = None
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     checkpoint = torch.load(name)
@@ -121,6 +121,8 @@ def load_model(name, model, optimizer):
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
     return model, optimizer, epoch, loss
+
+
 
 if __name__ == "__main__":
     print("Calculating the mean and standard deviation of the dataset")

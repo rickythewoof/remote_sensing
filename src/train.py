@@ -4,7 +4,7 @@ import utils
 from model import UNET
 import dataset as dataset
 import torch.nn as nn
-import tqdm.notebook as tqdm
+import tqdm
 
 if __name__ == "__main__":
     device = utils.set_cuda_and_seed()
@@ -26,37 +26,41 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=optimizer.param_groups[0]['lr']*0.9)
 
-def train (train_loader, eval_loader, model, optimizer, criterion, num_epochs = 10):
-    for epoch in range(num_epochs):
-        loss = train_1_epoch(train_loader, model, optimizer, criterion)
-        print(f"Epoch: {epoch} Loss: {loss}")
-        accuracy = evaluate(eval_loader, model)
-        utils.save_model(model, optimizer, epoch, loss, accuracy)
+def train (train_loader, eval_loader, model, optimizer, criterion, scheduler, device, num_epochs = 10):
+    for _ in range(num_epochs):
+        train_loss = train_1_epoch(train_loader, model, optimizer, criterion, device)
+        print(f"Training Loss: {train_loss}")
+        eval_accuracy = evaluate(eval_loader, model, device)
+        print(f"Evaluation Accuracy: {eval_accuracy}")
         scheduler.step()
-        if (False): # Early stopping condition!
-            utils.save_model(model, optimizer, epoch, loss, accuracy)
-
-def train_1_epoch(data_loader, model, optimizer, criterion):
+        
+def train_1_epoch(data_loader, model, optimizer, criterion, device):
     model.train()
     total_loss = 0
     count_batches = 0
-    bar = tqdm(count_batches, total=len(data_loader))
-    for data, label in data_loader:
-        data, label = data.to(device), label.to(device)
+
+    bar = tqdm.tqdm(data_loader)
+    for data, mask in bar:
+        # Move the data to the device
+        data, mask = data.to(device), mask.to(device).squeeze(dim=1)
+        # Zero the gradients
         optimizer.zero_grad()
+        # Forward pass
         output = model(data)
-        output = output.squeeze(dim = 1)
-        loss = criterion(output, label)
+        output = output.squeeze(dim=1)
+        # Calculate the loss
+        loss = criterion(output, mask)
+        # Backward pass
         loss.backward()
+        # Update the weights
         optimizer.step()
+        total_loss += loss.item()
+        count_batches += 1
+        bar.set_description(f"Loss: {loss.item():.4f}")
 
-        total_loss+= loss.item()
-        count_batches+=1
-        bar.set_description(f"Loss: {loss.item()}")
-        bar.update()
-    return total_loss/count_batches # Returning the average loss for the epoch
+    return total_loss / count_batches  # Returning the average loss for the epoch
 
-def evaluate(data_loader, model):
+def evaluate(data_loader, model, device):
     model.eval()
     num_preds = 0
     true_preds = 0
