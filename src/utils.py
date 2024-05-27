@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 import random
@@ -5,7 +6,7 @@ import torch
 import matplotlib.pyplot as plt
 import rasterio
 from rasterio.mask import mask
-import json
+import torchvision.utils
 from shapely.geometry import shape
 import tqdm
 
@@ -63,8 +64,8 @@ def visualize_image(image, mask):
     # Transpose the dimensions of image and mask
 
     # TODO: Visualize the image and mask
-    image = np.array(image).transpose(1,2,0)
-    mask = np.array(mask).transpose(1,2,0)
+    image = np.array(image)
+    mask = np.array(mask).squeeze()
     plt.figure(figsize=(10, 10))
     plt.subplot(1, 2, 1)
     plt.imshow(image)
@@ -89,50 +90,64 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-def get_accuracy(data_loader, model, device):
-    # Get the accuracy of the model
+def get_evals(data_loader, model, device):
+    # Get the accuracy and Jaccard index of the model
     true_preds = 0
     num_preds = 0
     dice_score = 0
+    jaccard_index = 0
     model.eval()
-
+    
     with torch.no_grad():
         for data, mask in data_loader:
-            data, mask = data.to(device), mask.to(device).squeeze(dim=1)
-            output = model(data)
-            output = torch.sigmoid(output)
-            output = (output > 0.5).float()
-            true_preds += (output == mask).sum()
-            num_preds += output.numel()
-            dice_score += (2*(output*mask).sum()) / ((output + mask).sum() + 1e-8)
-    print(f"Accuracy: {true_preds/num_preds:.4f}")
-    print(f"Dice Score: {dice_score/len(data_loader):.4f}")
+            data = data.to(device)
+            mask = mask.to(device).squeeze(dim=1)
+            pred = torch.sigmoid(model(data))
+            pred = (pred > 0.5).float()
+            true_preds += (pred == mask).sum()
+            num_preds += pred.numel()
+            intersection = (pred * mask).sum()
+            union = (pred + mask).sum() - intersection
+            
+            dice_score += (2*intersection) / (union + intersection + 1e-8)
+            jaccard_index += (intersection + 1e-8) / (union + 1e-8)
+    
+    accuracy = true_preds / num_preds
+    dice_score /= len(data_loader)
+    jaccard_index /= len(data_loader)
+    
+    print(f"Accuracy (check): {accuracy:.4f}")
+    print(f"Dice Score: {dice_score:.4f}")
+    print(f"Jaccard Index: {jaccard_index:.4f}")
+    
+    model.train()
 
-def save_predictions_as_image(prediction, output_path):
-    # Save the predictions as an image
-    pass
+def save_predictions_as_image(loader, model, device, output_path):
+    # Save the predictions as an image in the output_path
+    model.eval()
+    with torch.no_grad():
+        for idx, (data, mask) in enumerate(loader):
+            data = data.to(device)
+            mask = mask.to(device)
+            output = torch.sigmoid(model(data))
+            output = (output > 0.5).float()
+            torchvision.utils.save_image(output, os.path.join(output_path, f"{idx} - predictions.png"))
+            torchvision.utils.save_image(mask, os.path.join(output_path, f"{idx} - masks.png"))
+    model.train()
+                                
+                                         
 
 
 def save_checkpoint(state, filename="model_checkpoint.pth"):
-    checkpoint = {
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'loss': loss,
-        'f1_score': f1_score
-    }
     print("saving checkpoint")
-    torch.save(checkpoint, f"model_checkpoint_{epoch}.pt")
+    torch.save(state, filename)
 
-def load_checkpoint(name, model, optimizer):
-    model = None
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+def load_checkpoint(name, model, optimizer, scheduler):
+    print("loading checkpoint")
     checkpoint = torch.load(name)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    epoch = checkpoint['epoch']
-    loss = checkpoint['loss']
-    return model, optimizer, epoch, loss
+    model.load_state_dict(checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    scheduler.load_state_dict(checkpoint['scheduler'])
 
 
 
