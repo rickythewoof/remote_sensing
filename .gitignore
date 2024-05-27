@@ -1,7 +1,9 @@
 # Ignore the building file
 *.tar.gz
+data
+eval
 train
-test
+checkpoint.pth
 
 
 # Byte-compiled / optimized / DLL files

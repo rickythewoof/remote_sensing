@@ -58,29 +58,33 @@ def get_mean_std(path_to_train_data):
 
     return mean, std
 
-def visualize_image(image, mask):
-    # Convert image and mask to numpy arrays
-
-    # Transpose the dimensions of image and mask
-
-    # TODO: Visualize the image and mask
-    image = np.array(image)
+def visualize_image(image, mask, prediction = None, save_path = None):
+    # Visualize the image and mask
+    image = np.array(image).transpose(1,2,0)
     mask = np.array(mask).squeeze()
     plt.figure(figsize=(10, 10))
-    plt.subplot(1, 2, 1)
+    if(prediction is not None):
+        plt.subplot(1, 3, 1)
+    else:
+        plt.subplot(1, 2, 1)
     plt.imshow(image)
     plt.axis('off')
     plt.title("Image")
-    plt.subplot(1, 2, 2)
+    if(prediction is not None):
+        plt.subplot(1, 3, 2)
+    else:
+        plt.subplot(1, 2, 2)
     plt.imshow(mask, cmap='gray')
     plt.axis('off')
     plt.title("Mask")
+    if(prediction is not None):
+        plt.subplot(1, 3, 3)
+        plt.imshow(prediction, cmap='gray')
+        plt.axis('off')
+        plt.title("Prediction")
+    if(save_path is not None):
+        plt.savefig(save_path)
     plt.show()
-
-def normalize_image(image):
-    # Normalize the image
-    image = image / 255.0
-    return image
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -90,65 +94,67 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-def get_evals(data_loader, model, device):
-    # Get the accuracy and Jaccard index of the model
-    true_preds = 0
-    num_preds = 0
-    dice_score = 0
-    jaccard_index = 0
+def get_evals(data_loader, model, criterion, device, save_predictions=False, output_path=None):
+    # Get the accuracy, precision, recall, and F1 score of the model
+    true_positives = 0
+    false_positives = 0
+    false_negatives = 0
+    true_negatives = 0
     model.eval()
-    
+    total_loss = 0
+    num_batches = 0
+    if(save_predictions):
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        print("Saving predictions to:", output_path)
     with torch.no_grad():
-        for data, mask in data_loader:
+        for idx, (data, mask) in enumerate(data_loader):
             data = data.to(device)
             mask = mask.to(device).squeeze(dim=1)
-            pred = torch.sigmoid(model(data))
+            pred = torch.sigmoid(model(data).squeeze(dim=1))
             pred = (pred > 0.5).float()
-            true_preds += (pred == mask).sum()
-            num_preds += pred.numel()
-            intersection = (pred * mask).sum()
-            union = (pred + mask).sum() - intersection
+            loss = criterion(pred, mask)
+            total_loss += loss.item()
+            num_batches += 1
             
-            dice_score += (2*intersection) / (union + intersection + 1e-8)
-            jaccard_index += (intersection + 1e-8) / (union + 1e-8)
+            true_positives += ((pred == 1) & (mask == 1)).sum()
+            false_positives += ((pred == 1) & (mask == 0)).sum()
+            false_negatives += ((pred == 0) & (mask == 1)).sum()
+            true_negatives += ((pred == 0) & (mask == 0)).sum()
+            if save_predictions:
+                torchvision.utils.save_image(pred.unsqueeze(dim=1), os.path.join(output_path, f"{idx} - predictions.png"))
+                torchvision.utils.save_image(mask.unsqueeze(dim=1), os.path.join(output_path, f"{idx} - masks.png"))
     
-    accuracy = true_preds / num_preds
-    dice_score /= len(data_loader)
-    jaccard_index /= len(data_loader)
-    
-    print(f"Accuracy (check): {accuracy:.4f}")
-    print(f"Dice Score: {dice_score:.4f}")
-    print(f"Jaccard Index: {jaccard_index:.4f}")
-    
+    accuracy = (true_positives + true_negatives) / (true_positives + true_negatives + false_positives + false_negatives + 1e-8)
+    precision = true_positives / (true_positives + false_positives + 1e-8)
+    recall = true_positives / (true_positives + false_negatives + 1e-8)
+    f1 = 2 * (precision * recall) / (precision + recall + 1e-8)
     model.train()
-
-def save_predictions_as_image(loader, model, device, output_path):
-    # Save the predictions as an image in the output_path
-    model.eval()
-    with torch.no_grad():
-        for idx, (data, mask) in enumerate(loader):
-            data = data.to(device)
-            mask = mask.to(device)
-            output = torch.sigmoid(model(data))
-            output = (output > 0.5).float()
-            torchvision.utils.save_image(output, os.path.join(output_path, f"{idx} - predictions.png"))
-            torchvision.utils.save_image(mask, os.path.join(output_path, f"{idx} - masks.png"))
-    model.train()
-                                
-                                         
-
+    return total_loss/num_batches, precision.item(), recall.item(), f1.item(), accuracy.item()
 
 def save_checkpoint(state, filename="model_checkpoint.pth"):
     print("saving checkpoint")
     torch.save(state, filename)
 
-def load_checkpoint(name, model, optimizer, scheduler):
+def load_checkpoint(name, model = None, optimizer = None, criterion = None):
     print("loading checkpoint")
     checkpoint = torch.load(name)
-    model.load_state_dict(checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer'])
-    scheduler.load_state_dict(checkpoint['scheduler'])
-
+    if model is not None:
+        model.load_state_dict(checkpoint['state_dict'])
+    if optimizer is not None:
+        optimizer.load_state_dict(checkpoint['optimizer'])
+    if criterion is not None:
+        criterion.load_state_dict(checkpoint['loss'])
+    return checkpoint['history'], checkpoint['epoch']
+    
+def get_random_image(data_loader, model, device):
+    for data, mask in data_loader:
+        data = data.to(device)
+        mask = mask.to(device).squeeze(dim=1)
+        pred = torch.sigmoid(model(data).squeeze(dim=1))
+        pred = (pred > 0.5).float()
+        idx = random.randint(0, data.size(0) - 1)
+        return data[idx], mask[idx], pred[idx]
 
 
 if __name__ == "__main__":
