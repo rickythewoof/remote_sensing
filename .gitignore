@@ -3,7 +3,7 @@
 data
 eval
 train
-checkpoint.pth
+checkpoints
 
 
 # Byte-compiled / optimized / DLL files
