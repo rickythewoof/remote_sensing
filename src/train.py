@@ -21,6 +21,8 @@ def train(train_loader, model, optimizer, criterion, scaler, scheduler, device):
             pred = pred.squeeze(dim = 1)
             # Calculate the loss
             loss = criterion(pred, mask)
+            if loss != loss:
+                raise ValueError("Loss is NaN, something is VERY wrong, stopping training")
         # Backward pass
         scaler.scale(loss).backward()
         # Update the weights
