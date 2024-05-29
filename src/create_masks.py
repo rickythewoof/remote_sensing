@@ -47,11 +47,11 @@ def geojson_to_mask(image, geojson_path):
         geom = shape(feature['geometry'])
         if geom.geom_type == 'Polygon':
             coords = get_coords(image.transform, geom.exterior.coords)
-            draw.polygon(coords, outline=1024, fill=255)
+            draw.polygon(coords, outline=1, fill=1)
         elif geom.geom_type == 'MultiPolygon':
             for poly in geom.geoms:
                 coords = get_coords(image.transform, poly.exterior.coords)
-                draw.polygon(coords, outline=1024, fill=255)
+                draw.polygon(coords, outline=1, fill=1)
 
     # Converti l'immagine PIL in un array NumPy
     mask = np.array(mask)
@@ -60,7 +60,6 @@ def geojson_to_mask(image, geojson_path):
 def get_coords(transform, coords):
     new_coords = []
     for coord in coords:
-        print(coord)
         x, y = coord[:2]
         px, py = ~transform * (x, y)
         new_coords.append((int(px), int(py)))

@@ -14,16 +14,15 @@ def train(train_loader, model, optimizer, criterion, scaler, scheduler, device):
         mask = mask.to(device).squeeze(dim = 1)
         # Scale the data
         # Zero the gradients
-        optimizer.zero_grad()
         # Forward pass
         with torch.cuda.amp.autocast():
-            pred = model(data)
-            pred = pred.squeeze(dim = 1)
+            pred = model(data).squeeze(dim = 1)
             # Calculate the loss
             loss = criterion(pred, mask)
             if loss != loss:
                 raise ValueError("Loss is NaN, something is VERY wrong, stopping training")
         # Backward pass
+        optimizer.zero_grad()
         scaler.scale(loss).backward()
         # Update the weights
         scaler.step(optimizer)

@@ -111,11 +111,13 @@ def get_evals(data_loader, model, criterion, device, save_predictions=False, out
         for idx, (data, mask) in enumerate(data_loader):
             data = data.to(device)
             mask = mask.to(device).squeeze(dim=1)
-            pred = torch.sigmoid(model(data).squeeze(dim=1))
-            pred = (pred > 0.5).float()
-            loss = criterion(pred, mask)
+            out  = model(data).squeeze(dim=1)
+            loss = criterion(out, mask)
             total_loss += loss.item()
             num_batches += 1
+            pred = torch.sigmoid(out)
+            pred = (pred > 0.5).float()
+
             
             true_positives += ((pred == 1) & (mask == 1)).sum()
             false_positives += ((pred == 1) & (mask == 0)).sum()
