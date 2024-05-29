@@ -123,7 +123,7 @@ def get_evals(data_loader, model, criterion, device, save_predictions=False, out
             false_positives += ((pred == 1) & (mask == 0)).sum()
             false_negatives += ((pred == 0) & (mask == 1)).sum()
             true_negatives += ((pred == 0) & (mask == 0)).sum()
-            if save_predictions:
+            if save_predictions and idx % 10 == 0:
                 torchvision.utils.save_image(pred.unsqueeze(dim=1), os.path.join(output_path, f"{idx} - predictions.png"))
                 torchvision.utils.save_image(mask.unsqueeze(dim=1), os.path.join(output_path, f"{idx} - masks.png"))
     
@@ -147,7 +147,7 @@ def load_checkpoint(name, model = None, optimizer = None, criterion = None):
         optimizer.load_state_dict(checkpoint['optimizer'])
     if criterion is not None:
         criterion.load_state_dict(checkpoint['loss'])
-    return checkpoint['history'], checkpoint['epoch']
+    return checkpoint['history']
     
 def get_random_image(data_loader, model, device):
     for data, mask in data_loader:

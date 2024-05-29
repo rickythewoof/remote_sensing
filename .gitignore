@@ -1,8 +1,8 @@
 # Ignore the building file
 *.tar.gz
-data
-eval
+data/train/*
 train
+output/data/*.png
 checkpoints
 
 
