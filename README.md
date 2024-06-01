@@ -6,7 +6,7 @@ Install everything with
 
 ```console
 sudo apt install awscli python3 python3-pip && aws configure 
-pip install -r src/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Get Dataset
