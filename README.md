@@ -19,3 +19,7 @@ gunzip SN6_buildings_AOI_11_Rotterdam_train.tar.gz
 ### Sources
 [Spacenet AI](https://spacenet.ai/sn6-challenge/)
 [Neural Network lessons](https://youtube.com/playlist?list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC)
+
+This branch contains the latest in the model testing
+The model savefile can't be loaded in github without being screamed at by the octocat, so here are the checkpoints:
+[Drive](https://drive.google.com/drive/folders/13zLL9n0ul_fqRMNWkc43oew1qYW1MlDv?usp=drive_link)
