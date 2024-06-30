@@ -111,17 +111,19 @@ def get_evals(data_loader, model, criterion, device, save_predictions=False, out
         for idx, (data, mask) in enumerate(data_loader):
             data = data.to(device)
             mask = mask.to(device).squeeze(dim=1)
-            pred = torch.sigmoid(model(data).squeeze(dim=1))
-            pred = (pred > 0.5).float()
-            loss = criterion(pred, mask)
+            out  = model(data).squeeze(dim=1)
+            loss = criterion(out, mask)
             total_loss += loss.item()
             num_batches += 1
+            pred = torch.sigmoid(out)
+            pred = (pred > 0.5).float()
+
             
             true_positives += ((pred == 1) & (mask == 1)).sum()
             false_positives += ((pred == 1) & (mask == 0)).sum()
             false_negatives += ((pred == 0) & (mask == 1)).sum()
             true_negatives += ((pred == 0) & (mask == 0)).sum()
-            if save_predictions:
+            if save_predictions and idx % 10 == 0:
                 torchvision.utils.save_image(pred.unsqueeze(dim=1), os.path.join(output_path, f"{idx} - predictions.png"))
                 torchvision.utils.save_image(mask.unsqueeze(dim=1), os.path.join(output_path, f"{idx} - masks.png"))
     
@@ -145,7 +147,7 @@ def load_checkpoint(name, model = None, optimizer = None, criterion = None):
         optimizer.load_state_dict(checkpoint['optimizer'])
     if criterion is not None:
         criterion.load_state_dict(checkpoint['loss'])
-    return checkpoint['history'], checkpoint['epoch']
+    return checkpoint['history']
     
 def get_random_image(data_loader, model, device):
     for data, mask in data_loader:
